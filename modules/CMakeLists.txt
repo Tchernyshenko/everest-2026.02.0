@@ -1,4 +1,4 @@
-# add_subdirectory(API)
+add_subdirectory(API)
 # add_subdirectory(BringUp)
 add_subdirectory(EnergyManagement)
 # add_subdirectory(EV)
