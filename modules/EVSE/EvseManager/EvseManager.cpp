@@ -2413,8 +2413,9 @@ void EvseManager::powersupply_DC_off() {
 
 bool EvseManager::wait_powersupply_DC_voltage_reached(double target_voltage) {
     // wait until the voltage has rised to the target value
+    // 15s: dual-connector Modbus reconfig + ramp can exceed the previous 10s hard limit
     Timeout timeout;
-    timeout.start(10s);
+    timeout.start(15s);
     bool voltage_ok = false;
     while (not timeout.reached()) {
         if (cable_check_should_exit()) {
@@ -2431,10 +2432,9 @@ bool EvseManager::wait_powersupply_DC_voltage_reached(double target_voltage) {
                 break;
             }
         } else {
-            EVLOG_info << "Did not receive voltage measurement from power supply within 2 seconds.";
-            power_supply_DC_charging_phase = types::power_supply_DC::ChargingPhase::Other;
-            powersupply_DC_off();
-            break;
+            // Do not abort on a single telemetry gap — keep waiting until overall timeout
+            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 "
+                             "seconds, retrying until overall CableCheck timeout.";
         }
     }
     return voltage_ok;
@@ -2442,8 +2442,9 @@ bool EvseManager::wait_powersupply_DC_voltage_reached(double target_voltage) {
 
 bool EvseManager::wait_powersupply_DC_below_voltage(double target_voltage) {
     // wait until the voltage is below the target voltage
+    // 15s: matches wait_powersupply_DC_voltage_reached (dual-connector margin)
     Timeout timeout;
-    timeout.start(10s);
+    timeout.start(15s);
     bool voltage_ok = false;
     while (not timeout.reached()) {
         if (cable_check_should_exit()) {
@@ -2460,10 +2461,9 @@ bool EvseManager::wait_powersupply_DC_below_voltage(double target_voltage) {
                 break;
             }
         } else {
-            EVLOG_info << "Did not receive voltage measurement from power supply within 2 seconds.";
-            power_supply_DC_charging_phase = types::power_supply_DC::ChargingPhase::Other;
-            powersupply_DC_off();
-            break;
+            // Do not abort on a single telemetry gap — keep waiting until overall timeout
+            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 "
+                             "seconds, retrying until overall CableCheck timeout.";
         }
     }
     return voltage_ok;
