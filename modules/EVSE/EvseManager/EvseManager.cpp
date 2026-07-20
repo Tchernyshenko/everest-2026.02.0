@@ -2417,6 +2417,8 @@ bool EvseManager::wait_powersupply_DC_voltage_reached(double target_voltage) {
     Timeout timeout;
     timeout.start(15s);
     bool voltage_ok = false;
+    int telemetry_misses = 0;
+    constexpr int kMaxTelemetryMisses = 3;
     while (not timeout.reached()) {
         if (cable_check_should_exit()) {
             EVLOG_warning << "Cancel cable check wait voltage reached";
@@ -2427,14 +2429,22 @@ bool EvseManager::wait_powersupply_DC_voltage_reached(double target_voltage) {
         }
         types::power_supply_DC::VoltageCurrent m;
         if (powersupply_measurement.wait_for(m, 2000ms)) {
+            telemetry_misses = 0;
             if (fabs(m.voltage_V - target_voltage) < 10) {
                 voltage_ok = true;
                 break;
             }
         } else {
-            // Do not abort on a single telemetry gap — keep waiting until overall timeout
-            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 "
-                             "seconds, retrying until overall CableCheck timeout.";
+            ++telemetry_misses;
+            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 seconds ("
+                          << telemetry_misses << "/" << kMaxTelemetryMisses << ").";
+            if (telemetry_misses >= kMaxTelemetryMisses) {
+                EVLOG_warning << "Aborting CableCheck wait: no power supply telemetry after "
+                              << kMaxTelemetryMisses << " consecutive attempts.";
+                power_supply_DC_charging_phase = types::power_supply_DC::ChargingPhase::Other;
+                powersupply_DC_off();
+                break;
+            }
         }
     }
     return voltage_ok;
@@ -2446,6 +2456,8 @@ bool EvseManager::wait_powersupply_DC_below_voltage(double target_voltage) {
     Timeout timeout;
     timeout.start(15s);
     bool voltage_ok = false;
+    int telemetry_misses = 0;
+    constexpr int kMaxTelemetryMisses = 3;
     while (not timeout.reached()) {
         if (cable_check_should_exit()) {
             EVLOG_warning << "Cancel cable check wait below voltage";
@@ -2456,14 +2468,22 @@ bool EvseManager::wait_powersupply_DC_below_voltage(double target_voltage) {
         }
         types::power_supply_DC::VoltageCurrent m;
         if (powersupply_measurement.wait_for(m, 2000ms)) {
+            telemetry_misses = 0;
             if (m.voltage_V < target_voltage) {
                 voltage_ok = true;
                 break;
             }
         } else {
-            // Do not abort on a single telemetry gap — keep waiting until overall timeout
-            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 "
-                             "seconds, retrying until overall CableCheck timeout.";
+            ++telemetry_misses;
+            EVLOG_warning << "Did not receive voltage measurement from power supply within 2 seconds ("
+                          << telemetry_misses << "/" << kMaxTelemetryMisses << ").";
+            if (telemetry_misses >= kMaxTelemetryMisses) {
+                EVLOG_warning << "Aborting CableCheck wait: no power supply telemetry after "
+                              << kMaxTelemetryMisses << " consecutive attempts.";
+                power_supply_DC_charging_phase = types::power_supply_DC::ChargingPhase::Other;
+                powersupply_DC_off();
+                break;
+            }
         }
     }
     return voltage_ok;
