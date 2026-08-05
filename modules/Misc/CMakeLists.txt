@@ -3,7 +3,7 @@
 # ev_add_module(Linux_Systemd_Rauc)
 # ev_add_module(LocalAllowlistTokenValidator)
 # ev_add_module(PacketSniffer)
-# ev_add_module(PersistentStore)
+ev_add_module(PersistentStore)
 ev_add_module(SerialCommHub)
 # ev_add_module(Setup)
 # ev_add_module(Store)
